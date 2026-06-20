@@ -1,0 +1,6 @@
+{
+  "name": "시니어 일자리 매칭 대시보드",
+  "description": "60세 이상 고령 구직자의 경력, 성향 및 신체 조건과 구인광고 데이터를 매칭 분석하여 맞춤형 매칭율과 사회복지사 전용 대시보드를 생성하는 웹앱",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
