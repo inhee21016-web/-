@@ -30,6 +30,41 @@ import { DashboardView } from './components/DashboardView';
 export default function App() {
   const [screenMode, setScreenMode] = useState<'landing' | 'workspace'>('landing');
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 'analyzing' | 'completed'>(1);
+  
+  // Custom API key validation states
+  const [customApiKey, setCustomApiKey] = useState<string>(() => {
+    return localStorage.getItem("GEMINI_API_KEY_CUSTOM") || "";
+  });
+  const [isValidated, setIsValidated] = useState<boolean>(() => {
+    return !!localStorage.getItem("GEMINI_API_KEY_CUSTOM");
+  });
+
+  const handleValidateKey = async (key: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const resp = await fetch("/api/validate-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: key })
+      });
+      const data = await resp.json();
+      if (data.valid) {
+        setCustomApiKey(key);
+        setIsValidated(true);
+        localStorage.setItem("GEMINI_API_KEY_CUSTOM", key);
+        return { success: true };
+      } else {
+        return { success: false, error: data.error || "올바르지 않은 API 키입니다." };
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message || "서버 혹은 네트워크 연결에 실패했습니다." };
+    }
+  };
+
+  const handleResetKey = () => {
+    setCustomApiKey("");
+    setIsValidated(false);
+    localStorage.removeItem("GEMINI_API_KEY_CUSTOM");
+  };
   const [inputText, setInputText] = useState<string>('');
   
   // Accumulated inputs
@@ -318,7 +353,8 @@ export default function App() {
         body: JSON.stringify({
           jobAds: jobs,
           seekerInfo: seeker,
-          additionalInfo: additional
+          additionalInfo: additional,
+          customApiKey: customApiKey
         })
       });
 
@@ -430,7 +466,17 @@ export default function App() {
               </button>
               
               <button
-                onClick={() => setScreenMode('workspace')}
+                onClick={() => {
+                  if (!isValidated) {
+                    alert("실시간 매칭 분석을 시작하려면 먼저 소개 화면에서 Gemini API 키를 입력하고 승인받으셔야 합니다. 😊");
+                    const target = document.getElementById("api-key-section");
+                    if (target) {
+                      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    return;
+                  }
+                  setScreenMode('workspace');
+                }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
                   screenMode === 'workspace' 
                     ? 'bg-slate-700 text-white shadow-sm' 
@@ -475,6 +521,10 @@ export default function App() {
               <LandingPage 
                 onStartAnalysis={() => setScreenMode('workspace')}
                 onQuickStart={fillAllSampleAndRun}
+                customApiKey={customApiKey}
+                isValidated={isValidated}
+                onValidateKey={handleValidateKey}
+                onResetKey={handleResetKey}
               />
             </motion.div>
           ) : (

@@ -14,15 +14,15 @@ app.use(express.json());
 // API route first
 app.post("/api/match", async (req, res) => {
   try {
-    const { jobAds, seekerInfo, additionalInfo } = req.body;
+    const { jobAds, seekerInfo, additionalInfo, customApiKey } = req.body;
 
     if (!jobAds || !seekerInfo) {
       return res.status(400).json({ error: "구인 광고 정보와 구직자 정보가 모두 입력되지 않았습니다." });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = customApiKey || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "서버에 GEMINI_API_KEY가 설정되어 있지 않습니다." });
+      return res.status(400).json({ error: "Gemini API Key가 승인되지 않았습니다. 메인 화면에서 키를 인증해 주세요." });
     }
 
     const ai = new GoogleGenAI({
@@ -148,6 +148,53 @@ ${additionalInfo || "없음"}
   } catch (err: any) {
     console.error("Match API Error:", err);
     res.status(500).json({ error: err.message || "매칭 분석 중 서버 오류가 발생했습니다." });
+  }
+});
+
+// API key validation route
+app.post("/api/validate-key", async (req, res) => {
+  try {
+    const { apiKey } = req.body;
+    if (!apiKey) {
+      return res.json({ valid: false, error: "API 키가 입력되지 않았습니다." });
+    }
+
+    const ai = new GoogleGenAI({
+      apiKey: apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
+
+    // Test request to ensure key is active
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: "Valid API Key request",
+      config: {
+        maxOutputTokens: 5
+      }
+    });
+
+    if (response && response.text) {
+      return res.json({ valid: true });
+    } else {
+      return res.json({ valid: false, error: "구글 어시스턴스 연결은 성공했으나, 응답 텍스트를 받지 못했습니다." });
+    }
+  } catch (error: any) {
+    console.error("API Key Validation error:", error);
+    let msg = "유효하지 않은 API 키이거나 권한이 없습니다.";
+    if (error.message) {
+      if (error.message.includes("API_KEY_INVALID")) {
+        msg = "구글 API 키 형식이 올바르지 않습니다. (API_KEY_INVALID)";
+      } else if (error.message.includes("API key not valid")) {
+        msg = "유효하지 않은 API 키입니다. 승인된 키인지 다시 한 번 확인해주세요.";
+      } else {
+        msg = `유효성 검사 오류: ${error.message}`;
+      }
+    }
+    return res.json({ valid: false, error: msg });
   }
 });
 
