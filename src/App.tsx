@@ -48,9 +48,10 @@ export default function App() {
       });
       const data = await resp.json();
       if (data.valid) {
-        setCustomApiKey(key);
+        const keyToUse = data.cleanedKey || key;
+        setCustomApiKey(keyToUse);
         setIsValidated(true);
-        localStorage.setItem("GEMINI_API_KEY_CUSTOM", key);
+        localStorage.setItem("GEMINI_API_KEY_CUSTOM", keyToUse);
         return { success: true };
       } else {
         return { success: false, error: data.error || "올바르지 않은 API 키입니다." };

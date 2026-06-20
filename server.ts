@@ -159,8 +159,21 @@ app.post("/api/validate-key", async (req, res) => {
       return res.json({ valid: false, error: "API 키가 입력되지 않았습니다." });
     }
 
+    // Clean up key: trim and remove outer double/single quotes if present
+    let cleanedKey = apiKey.trim();
+    if (
+      (cleanedKey.startsWith('"') && cleanedKey.endsWith('"')) ||
+      (cleanedKey.startsWith("'") && cleanedKey.endsWith("'"))
+    ) {
+      cleanedKey = cleanedKey.slice(1, -1).trim();
+    }
+
+    if (!cleanedKey) {
+      return res.json({ valid: false, error: "유효하지 않은 공백 API 키입니다." });
+    }
+
     const ai = new GoogleGenAI({
-      apiKey: apiKey,
+      apiKey: cleanedKey,
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
@@ -168,30 +181,47 @@ app.post("/api/validate-key", async (req, res) => {
       }
     });
 
-    // Test request to ensure key is active
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: "Valid API Key request",
-      config: {
-        maxOutputTokens: 5
-      }
-    });
+    // We try to request a very cheap token response.
+    // We try gemini-2.5-flash as default, then gemini-1.5-flash as fallback if needed.
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: "Hello",
+        config: {
+          maxOutputTokens: 5
+        }
+      });
+    } catch (primaryErr: any) {
+      console.warn("Primary verification model 'gemini-2.5-flash' failed, trying fallback...", primaryErr.message);
+      // Fallback model attempt
+      response = await ai.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: "Hello",
+        config: {
+          maxOutputTokens: 5
+        }
+      });
+    }
 
     if (response && response.text) {
-      return res.json({ valid: true });
+      return res.json({ valid: true, cleanedKey });
     } else {
-      return res.json({ valid: false, error: "구글 어시스턴스 연결은 성공했으나, 응답 텍스트를 받지 못했습니다." });
+      return res.json({ valid: false, error: "구글 서비스 연결은 연결되었으나 정상 응답 텍스트를 수신하지 못했습니다." });
     }
   } catch (error: any) {
     console.error("API Key Validation error:", error);
     let msg = "유효하지 않은 API 키이거나 권한이 없습니다.";
     if (error.message) {
-      if (error.message.includes("API_KEY_INVALID")) {
-        msg = "구글 API 키 형식이 올바르지 않습니다. (API_KEY_INVALID)";
-      } else if (error.message.includes("API key not valid")) {
-        msg = "유효하지 않은 API 키입니다. 승인된 키인지 다시 한 번 확인해주세요.";
+      const lowerMsg = error.message.toLowerCase();
+      if (lowerMsg.includes("prepayment") || lowerMsg.includes("depleted") || lowerMsg.includes("exhausted") || lowerMsg.includes("429")) {
+        msg = "입력하신 API 키는 올바른 형식의 올바른 키이지만, 해당 구글 계정의 '선결제 크레딧(Prepayment Credits)'이 모두 소진되었거나 결제 승인이 필요하여 구글 측에서 사용을 일시 제한했습니다. 해결 방법: Google AI Studio(https://aistudio.google.com/projects)에서 프로젝트 및 결제 수단을 업데이트하시거나, 무료 라이선스 플랜으로 신규 프로젝트/API 키를 생성하여 등록하시면 정상 동작합니다.";
+      } else if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("key not valid")) {
+        msg = "입력하신 API 키가 올바르지 않습니다. 복사할 때 오탈자나 공백이 포함되진 않았는지 확인해 주세요. (API_KEY_INVALID)";
+      } else if (lowerMsg.includes("quota") || lowerMsg.includes("limit")) {
+        msg = "API 키의 사용 할당량(Quota)을 초과했거나 제한되었습니다. Google AI Studio에서 새 키를 발급받으시길 권장합니다.";
       } else {
-        msg = `유효성 검사 오류: ${error.message}`;
+        msg = `유효성 검증 오류: ${error.message}`;
       }
     }
     return res.json({ valid: false, error: msg });
