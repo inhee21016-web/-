@@ -182,21 +182,21 @@ app.post("/api/validate-key", async (req, res) => {
     });
 
     // We try to request a very cheap token response.
-    // We try gemini-2.5-flash as default, then gemini-1.5-flash as fallback if needed.
+    // We try gemini-3.5-flash as default, then gemini-flash-latest as fallback if needed.
     let response;
     try {
       response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash",
         contents: "Hello",
         config: {
           maxOutputTokens: 5
         }
       });
     } catch (primaryErr: any) {
-      console.warn("Primary verification model 'gemini-2.5-flash' failed, trying fallback...", primaryErr.message);
+      console.warn("Primary verification model 'gemini-3.5-flash' failed, trying fallback...", primaryErr.message);
       // Fallback model attempt
       response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-flash-latest",
         contents: "Hello",
         config: {
           maxOutputTokens: 5
