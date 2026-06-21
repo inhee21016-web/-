@@ -19,7 +19,9 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp,
-  Loader2
+  Loader2,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -40,15 +42,16 @@ export function LandingPage({
   onValidateKey,
   onResetKey
 }: LandingPageProps) {
-  const [keyValue, setKeyValue] = useState(customApiKey);
+  const [keyValue, setKeyValue] = useState(isValidated ? customApiKey : "");
+  const [showKey, setShowKey] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(true);
   const [isVerifying, setIsVerifying] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [unvalidatedAlert, setUnvalidatedAlert] = useState<boolean>(false);
 
   useEffect(() => {
-    setKeyValue(customApiKey);
-  }, [customApiKey]);
+    setKeyValue(isValidated ? customApiKey : "");
+  }, [customApiKey, isValidated]);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,7 +157,7 @@ export function LandingPage({
                     <div className="flex items-center gap-2 flex-1 bg-slate-50 border border-slate-200 hover:border-slate-300 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 transition-all rounded-2xl px-4 py-3">
                       <Lock className="w-4 h-4 text-slate-400 shrink-0" />
                       <input 
-                        type="password"
+                        type={showKey ? "text" : "password"}
                         value={keyValue}
                         onChange={(e) => {
                           setKeyValue(e.target.value);
@@ -164,6 +167,14 @@ export function LandingPage({
                         className="w-full bg-transparent outline-none text-slate-800 placeholder-slate-400 font-mono text-xs font-semibold"
                         disabled={isVerifying}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowKey(!showKey)}
+                        className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 shrink-0 flex items-center justify-center"
+                        title={showKey ? "API 키 숨기기" : "API 키 보기"}
+                      >
+                        {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                     <button
                       type="submit"

@@ -32,11 +32,12 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 'analyzing' | 'completed'>(1);
   
   // Custom API key validation states
-  const [customApiKey, setCustomApiKey] = useState<string>(() => {
-    return localStorage.getItem("GEMINI_API_KEY_CUSTOM") || "";
-  });
   const [isValidated, setIsValidated] = useState<boolean>(() => {
-    return !!localStorage.getItem("GEMINI_API_KEY_CUSTOM");
+    return !!sessionStorage.getItem("GEMINI_API_KEY_VALID_SESSION");
+  });
+  const [customApiKey, setCustomApiKey] = useState<string>(() => {
+    const validated = !!sessionStorage.getItem("GEMINI_API_KEY_VALID_SESSION");
+    return validated ? (localStorage.getItem("GEMINI_API_KEY_CUSTOM") || "") : "";
   });
 
   const handleValidateKey = async (key: string): Promise<{ success: boolean; error?: string }> => {
@@ -64,6 +65,7 @@ export default function App() {
         setCustomApiKey(keyToUse);
         setIsValidated(true);
         localStorage.setItem("GEMINI_API_KEY_CUSTOM", keyToUse);
+        sessionStorage.setItem("GEMINI_API_KEY_VALID_SESSION", "true");
         return { success: true };
       } else {
         return { success: false, error: data.error || "올바르지 않은 API 키입니다." };
@@ -77,6 +79,7 @@ export default function App() {
     setCustomApiKey("");
     setIsValidated(false);
     localStorage.removeItem("GEMINI_API_KEY_CUSTOM");
+    sessionStorage.removeItem("GEMINI_API_KEY_VALID_SESSION");
   };
   const [inputText, setInputText] = useState<string>('');
   
