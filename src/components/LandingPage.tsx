@@ -153,7 +153,11 @@ export function LandingPage({
 
               {!isValidated ? (
                 <>
-                  <form onSubmit={handleFormSubmit} className="flex flex-col sm:flex-row items-stretch gap-2.5">
+                  <form 
+                    onSubmit={handleFormSubmit} 
+                    className="flex flex-col sm:flex-row items-stretch gap-2.5"
+                    autoComplete="off"
+                  >
                     <div className="flex items-center gap-2 flex-1 bg-slate-50 border border-slate-200 hover:border-slate-300 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 transition-all rounded-2xl px-4 py-3">
                       <Lock className="w-4 h-4 text-slate-400 shrink-0" />
                       <input 
@@ -166,6 +170,7 @@ export function LandingPage({
                         placeholder="Gemini API Key 입력"
                         className="w-full bg-transparent outline-none text-slate-800 placeholder-slate-400 font-mono text-xs font-semibold"
                         disabled={isVerifying}
+                        autoComplete="new-password"
                       />
                       <button
                         type="button"

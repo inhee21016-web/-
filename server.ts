@@ -11,6 +11,28 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Helper function to try generating content across multiple models as fallbacks.
+async function generateContentWithFallback(ai: any, params: any, models: string[]) {
+  let lastError: any = null;
+  for (const model of models) {
+    try {
+      console.log(`[Gemini SDK] Attempting request using model: ${model}`);
+      const response = await ai.models.generateContent({
+        ...params,
+        model: model,
+      });
+      if (response && response.text) {
+        console.log(`[Gemini SDK] Successfully generated content with model: ${model}`);
+        return response;
+      }
+    } catch (err: any) {
+      console.warn(`[Gemini SDK] Model '${model}' failed:`, err.message || err);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("All fallback models failed to generate content.");
+}
+
 // API route first
 app.post("/api/match", async (req, res) => {
   try {
@@ -71,8 +93,7 @@ ${additionalInfo || "없음"}
 
 위 정보를 바탕으로 각 구인광고별 정밀 매칭 분석 결과를 JSON 형식에 맞춰 보고해 주세요.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+    const response = await generateContentWithFallback(ai, {
       contents: userPrompt,
       config: {
         systemInstruction: systemInstruction,
@@ -137,7 +158,7 @@ ${additionalInfo || "없음"}
           required: ["seekerSummary", "generalSummary", "matches"]
         }
       }
-    });
+    }, ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-1.5-flash"]);
 
     const resultText = response.text;
     if (!resultText) {
@@ -181,28 +202,14 @@ app.post("/api/validate-key", async (req, res) => {
       }
     });
 
-    // We try to request a very cheap token response.
-    // We try gemini-3.5-flash as default, then gemini-flash-latest as fallback if needed.
-    let response;
-    try {
-      response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: "Hello",
-        config: {
-          maxOutputTokens: 5
-        }
-      });
-    } catch (primaryErr: any) {
-      console.warn("Primary verification model 'gemini-3.5-flash' failed, trying fallback...", primaryErr.message);
-      // Fallback model attempt
-      response = await ai.models.generateContent({
-        model: "gemini-flash-latest",
-        contents: "Hello",
-        config: {
-          maxOutputTokens: 5
-        }
-      });
-    }
+    // We try to request a very cheap token response using the helper function.
+    // This will sequentially attempt gemini-3.5-flash, gemini-2.5-flash, and gemini-1.5-flash.
+    const response = await generateContentWithFallback(ai, {
+      contents: "Hello",
+      config: {
+        maxOutputTokens: 5
+      }
+    }, ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-1.5-flash"]);
 
     if (response && response.text) {
       return res.json({ valid: true, cleanedKey });
