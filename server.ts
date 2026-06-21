@@ -212,17 +212,31 @@ app.post("/api/validate-key", async (req, res) => {
   } catch (error: any) {
     console.error("API Key Validation error:", error);
     let msg = "유효하지 않은 API 키이거나 권한이 없습니다.";
-    if (error.message) {
-      const lowerMsg = error.message.toLowerCase();
-      if (lowerMsg.includes("prepayment") || lowerMsg.includes("depleted") || lowerMsg.includes("exhausted") || lowerMsg.includes("429")) {
-        msg = "입력하신 API 키는 올바른 형식의 올바른 키이지만, 해당 구글 계정의 '선결제 크레딧(Prepayment Credits)'이 모두 소진되었거나 결제 승인이 필요하여 구글 측에서 사용을 일시 제한했습니다. 해결 방법: Google AI Studio(https://aistudio.google.com/projects)에서 프로젝트 및 결제 수단을 업데이트하시거나, 무료 라이선스 플랜으로 신규 프로젝트/API 키를 생성하여 등록하시면 정상 동작합니다.";
-      } else if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("key not valid")) {
-        msg = "입력하신 API 키가 올바르지 않습니다. 복사할 때 오탈자나 공백이 포함되진 않았는지 확인해 주세요. (API_KEY_INVALID)";
-      } else if (lowerMsg.includes("quota") || lowerMsg.includes("limit")) {
-        msg = "API 키의 사용 할당량(Quota)을 초과했거나 제한되었습니다. Google AI Studio에서 새 키를 발급받으시길 권장합니다.";
-      } else {
-        msg = `유효성 검증 오류: ${error.message}`;
+    try {
+      if (error) {
+        // Safe conversion of error object to string for robust parsing
+        const errStr = typeof error === "string" 
+          ? error 
+          : (error.message ? String(error.message) : JSON.stringify(error));
+        const lowerMsg = errStr.toLowerCase();
+
+        if (
+          lowerMsg.includes("prepayment") ||
+          lowerMsg.includes("depleted") ||
+          lowerMsg.includes("exhausted") ||
+          lowerMsg.includes("429")
+        ) {
+          msg = "입력하신 API 키는 올바른 형식의 올바른 키이지만, 해당 구글 계정의 '선결제 크레딧(Prepayment Credits)'이 모두 소진되었거나 결제 승인이 필요하여 구글 측에서 사용을 일시 제한했습니다. 해결 방법: Google AI Studio(https://aistudio.google.com/projects)에서 프로젝트 및 결제 수단을 업데이트하시거나, 무료 라이선스 플랜으로 신규 프로젝트/API 키를 생성하여 등록하시면 정상 동작합니다.";
+        } else if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("key not valid")) {
+          msg = "입력하신 API 키가 올바르지 않습니다. 복사할 때 오탈자나 공백이 포함되진 않았는지 확인해 주세요. (API_KEY_INVALID)";
+        } else if (lowerMsg.includes("quota") || lowerMsg.includes("limit")) {
+          msg = "API 키의 사용 할당량(Quota)을 초과했거나 제한되었습니다. Google AI Studio에서 새 키를 발급받으시길 권장합니다.";
+        } else {
+          msg = `유효성 검증 오류: ${errStr}`;
+        }
       }
+    } catch (innerFormatError) {
+      console.error("Error formatter failed:", innerFormatError);
     }
     return res.json({ valid: false, error: msg });
   }

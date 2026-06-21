@@ -46,6 +46,18 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey: key })
       });
+
+      // Safely handle non-JSON / HTML responses (e.g. server starting/failed pages)
+      const contentType = resp.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await resp.text();
+        console.error("Non-JSON Server Response:", text);
+        return { 
+          success: false, 
+          error: "서버가 아직 준비 중이거나 일시적인 연결 지연이 발생했습니다. 3초 정도 대기 후 다시 [시작하기]를 눌러보세요." 
+        };
+      }
+
       const data = await resp.json();
       if (data.valid) {
         const keyToUse = data.cleanedKey || key;
