@@ -461,7 +461,7 @@ export default function App() {
             <div>
               <span className="text-[9px] font-bold text-indigo-400 block tracking-widest uppercase font-mono">Senior Employment AI Partner</span>
               <h1 className="text-sm md:text-base font-extrabold tracking-tight text-slate-100 break-keep">
-                시니어 일자리 매칭 정밀 전문가 대시보드
+                시니어 일자리 매칭 전문가 대시보드
               </h1>
             </div>
           </div>
